@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Settings, Play, Square, Zap, FileJson, Move, Flag, Repeat, Usb, Upload, CheckCircle, XCircle, Home, Save, FolderPlus, Download } from 'lucide-react';
+import { icons } from './config/icons';
+import { createScratchTheme } from './config/theme';
+import { boards } from './config/boards';
+import { registerAllBlocks } from './blocks';
 
 // Suppress Blockly deprecation warnings
 const originalWarn = console.warn;
@@ -558,6 +562,16 @@ const App = () => {
         const num2 = getInputValue(block, 'NUM2', '1');
         line = `(${num1} / ${num2})`;
       }
+      else if (type === 'operator_arithmetic') {
+        const op = block.getFieldValue('OP');
+        const num1 = getInputValue(block, 'NUM1', '0');
+        const num2 = getInputValue(block, 'NUM2', '1');
+        if (op === 'ADD') line = `(${num1} + ${num2})`;
+        else if (op === 'SUBTRACT') line = `(${num1} - ${num2})`;
+        else if (op === 'MULTIPLY') line = `(${num1} * ${num2})`;
+        else if (op === 'DIVIDE') line = `(${num1} / ${num2})`;
+        else if (op === 'MOD') line = `(${num1} % ${num2})`;
+      }
       else if (type === 'operator_random') {
         const from = getInputValue(block, 'FROM', '1');
         const to = getInputValue(block, 'TO', '10');
@@ -582,12 +596,76 @@ const App = () => {
         else if (op === 'sin') line = `math.sin(${num})`;
         else if (op === 'cos') line = `math.cos(${num})`;
         else if (op === 'tan') line = `math.tan(${num})`;
+        else if (op === 'asin') line = `math.asin(${num})`;
+        else if (op === 'acos') line = `math.acos(${num})`;
+        else if (op === 'atan') line = `math.atan(${num})`;
         else if (op === 'ln') line = `math.log(${num})`;
         else if (op === 'log') line = `math.log10(${num})`;
         else if (op === 'exp') line = `math.exp(${num})`;
+        else if (op === 'pow10') line = `math.pow(10, ${num})`;
+      }
+      else if (type === 'math_number') {
+        const num = block.getFieldValue('NUM');
+        line = `${num}`;
+      }
+      else if (type === 'math_constant') {
+        const constant = block.getFieldValue('CONSTANT');
+        if (constant === 'PI') line = `math.pi`;
+        else if (constant === 'E') line = `math.e`;
+        else if (constant === 'GOLDEN_RATIO') line = `1.618033988749895`;
+        else if (constant === 'SQRT2') line = `math.sqrt(2)`;
+        else if (constant === 'SQRT1_2') line = `math.sqrt(0.5)`;
+        else if (constant === 'INFINITY') line = `float('inf')`;
+      }
+      else if (type === 'math_power') {
+        const base = getInputValue(block, 'BASE', '2');
+        const exponent = getInputValue(block, 'EXPONENT', '2');
+        line = `math.pow(${base}, ${exponent})`;
+      }
+      else if (type === 'math_minmax') {
+        const op = block.getFieldValue('OP');
+        const a = getInputValue(block, 'A', '0');
+        const b = getInputValue(block, 'B', '0');
+        if (op === 'MIN') line = `min(${a}, ${b})`;
+        else if (op === 'MAX') line = `max(${a}, ${b})`;
+      }
+      else if (type === 'math_constrain') {
+        const value = getInputValue(block, 'VALUE', '50');
+        const low = getInputValue(block, 'LOW', '0');
+        const high = getInputValue(block, 'HIGH', '100');
+        line = `max(${low}, min(${high}, ${value}))`;
+      }
+      else if (type === 'math_random_float') {
+        line = `random.random()`;
+      }
+      else if (type === 'math_number_property') {
+        const number = getInputValue(block, 'NUMBER', '0');
+        const property = block.getFieldValue('PROPERTY');
+        if (property === 'EVEN') line = `(${number} % 2 == 0)`;
+        else if (property === 'ODD') line = `(${number} % 2 == 1)`;
+        else if (property === 'PRIME') line = `(${number} > 1 and all(${number} % i != 0 for i in range(2, int(${number}**0.5) + 1)))`;
+        else if (property === 'WHOLE') line = `(${number} % 1 == 0)`;
+        else if (property === 'POSITIVE') line = `(${number} > 0)`;
+        else if (property === 'NEGATIVE') line = `(${number} < 0)`;
+      }
+      else if (type === 'math_atan2') {
+        const y = getInputValue(block, 'Y', '0');
+        const x = getInputValue(block, 'X', '0');
+        line = `math.atan2(${y}, ${x})`;
       }
       
-      // Operators - Comparison (102-107)
+      // Operators - Comparison (102-107) - CONSOLIDATED
+      else if (type === 'operator_comparison') {
+        const op = block.getFieldValue('OP');
+        const op1 = getInputValue(block, 'OPERAND1', '0');
+        const op2 = getInputValue(block, 'OPERAND2', '0');
+        if (op === 'EQ') line = `(${op1} == ${op2})`;
+        else if (op === 'NEQ') line = `(${op1} != ${op2})`;
+        else if (op === 'LT') line = `(${op1} < ${op2})`;
+        else if (op === 'GT') line = `(${op1} > ${op2})`;
+        else if (op === 'LTE') line = `(${op1} <= ${op2})`;
+        else if (op === 'GTE') line = `(${op1} >= ${op2})`;
+      }
       else if (type === 'operator_equals') {
         const op1 = getInputValue(block, 'OPERAND1', '0');
         const op2 = getInputValue(block, 'OPERAND2', '0');
@@ -619,7 +697,14 @@ const App = () => {
         line = `(${op1} >= ${op2})`;
       }
       
-      // Operators - Logic (108-110)
+      // Operators - Logic (108-110) - CONSOLIDATED
+      else if (type === 'operator_logic') {
+        const op = block.getFieldValue('OP');
+        const op1 = getInputValue(block, 'OPERAND1', 'False');
+        const op2 = getInputValue(block, 'OPERAND2', 'False');
+        if (op === 'AND') line = `(${op1} and ${op2})`;
+        else if (op === 'OR') line = `(${op1} or ${op2})`;
+      }
       else if (type === 'operator_and') {
         const op1 = getInputValue(block, 'OPERAND1', 'False');
         const op2 = getInputValue(block, 'OPERAND2', 'False');
@@ -712,6 +797,287 @@ const App = () => {
         const item = getInputValue(block, 'ITEM', '0');
         line = `(${item} in ${listName})`;
       }
+
+      // ========================================
+      // NEW BLOCKS PYTHON GENERATION (126-175)
+      // ========================================
+
+      // Advanced Math Operations (126-135)
+      else if (type === 'operator_power') {
+        const base = getInputValue(block, 'BASE', '2');
+        const exponent = getInputValue(block, 'EXPONENT', '2');
+        line = `math.pow(${base}, ${exponent})`;
+      }
+      else if (type === 'operator_min') {
+        const num1 = getInputValue(block, 'NUM1', '0');
+        const num2 = getInputValue(block, 'NUM2', '0');
+        line = `min(${num1}, ${num2})`;
+      }
+      else if (type === 'operator_max') {
+        const num1 = getInputValue(block, 'NUM1', '0');
+        const num2 = getInputValue(block, 'NUM2', '0');
+        line = `max(${num1}, ${num2})`;
+      }
+      else if (type === 'operator_clamp') {
+        const value = getInputValue(block, 'VALUE', '50');
+        const min = getInputValue(block, 'MIN', '0');
+        const max = getInputValue(block, 'MAX', '100');
+        line = `max(${min}, min(${max}, ${value}))`;
+      }
+      else if (type === 'operator_map') {
+        const value = getInputValue(block, 'VALUE', '0');
+        const fromLow = getInputValue(block, 'FROM_LOW', '0');
+        const fromHigh = getInputValue(block, 'FROM_HIGH', '100');
+        const toLow = getInputValue(block, 'TO_LOW', '0');
+        const toHigh = getInputValue(block, 'TO_HIGH', '255');
+        line = `((${value} - ${fromLow}) * (${toHigh} - ${toLow}) / (${fromHigh} - ${fromLow}) + ${toLow})`;
+      }
+      else if (type === 'operator_constrain_angle') {
+        const angle = getInputValue(block, 'ANGLE', '0');
+        line = `(${angle} % 360)`;
+      }
+      else if (type === 'operator_radians') {
+        const degrees = getInputValue(block, 'DEGREES', '0');
+        line = `math.radians(${degrees})`;
+      }
+      else if (type === 'operator_degrees') {
+        const radians = getInputValue(block, 'RADIANS', '0');
+        line = `math.degrees(${radians})`;
+      }
+      else if (type === 'operator_percentage') {
+        const percent = getInputValue(block, 'PERCENT', '50');
+        const value = getInputValue(block, 'VALUE', '100');
+        line = `(${percent} * ${value} / 100)`;
+      }
+      else if (type === 'operator_average') {
+        const num1 = getInputValue(block, 'NUM1', '0');
+        const num2 = getInputValue(block, 'NUM2', '0');
+        line = `((${num1} + ${num2}) / 2)`;
+      }
+
+      // Advanced Text Operations (136-145)
+      else if (type === 'operator_uppercase') {
+        const text = getInputValue(block, 'TEXT', '""');
+        line = `str(${text}).upper()`;
+      }
+      else if (type === 'operator_lowercase') {
+        const text = getInputValue(block, 'TEXT', '""');
+        line = `str(${text}).lower()`;
+      }
+      else if (type === 'operator_trim') {
+        const text = getInputValue(block, 'TEXT', '""');
+        line = `str(${text}).strip()`;
+      }
+      else if (type === 'operator_replace') {
+        const old = getInputValue(block, 'OLD', '""');
+        const text = getInputValue(block, 'TEXT', '""');
+        const newText = getInputValue(block, 'NEW', '""');
+        line = `str(${text}).replace(${old}, ${newText})`;
+      }
+      else if (type === 'operator_split') {
+        const text = getInputValue(block, 'TEXT', '""');
+        const delimiter = getInputValue(block, 'DELIMITER', '","');
+        line = `str(${text}).split(${delimiter})`;
+      }
+      else if (type === 'operator_reverse_text') {
+        const text = getInputValue(block, 'TEXT', '""');
+        line = `str(${text})[::-1]`;
+      }
+      else if (type === 'operator_starts_with') {
+        const text = getInputValue(block, 'TEXT', '""');
+        const prefix = getInputValue(block, 'PREFIX', '""');
+        line = `str(${text}).startswith(${prefix})`;
+      }
+      else if (type === 'operator_ends_with') {
+        const text = getInputValue(block, 'TEXT', '""');
+        const suffix = getInputValue(block, 'SUFFIX', '""');
+        line = `str(${text}).endswith(${suffix})`;
+      }
+      else if (type === 'operator_substring') {
+        const text = getInputValue(block, 'TEXT', '""');
+        const start = getInputValue(block, 'START', '0');
+        const end = getInputValue(block, 'END', '5');
+        line = `str(${text})[${start}:${end}]`;
+      }
+      else if (type === 'operator_repeat_text') {
+        const text = getInputValue(block, 'TEXT', '""');
+        const times = getInputValue(block, 'TIMES', '3');
+        line = `(str(${text}) * ${times})`;
+      }
+
+      // Advanced List Operations (146-155)
+      else if (type === 'data_sort_list') {
+        const listName = block.getFieldValue('LIST');
+        const order = block.getFieldValue('ORDER');
+        if (order === 'ASC') line = `${listName}.sort()\n`;
+        else line = `${listName}.sort(reverse=True)\n`;
+      }
+      else if (type === 'data_reverse_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `${listName}.reverse()\n`;
+      }
+      else if (type === 'data_shuffle_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `random.shuffle(${listName})\n`;
+      }
+      else if (type === 'data_slice_list') {
+        const listName = block.getFieldValue('LIST');
+        const start = getInputValue(block, 'START', '0');
+        const end = getInputValue(block, 'END', '5');
+        line = `${listName}[${start}:${end}]`;
+      }
+      else if (type === 'data_index_of') {
+        const item = getInputValue(block, 'ITEM', '0');
+        const listName = block.getFieldValue('LIST');
+        line = `(${listName}.index(${item}) + 1 if ${item} in ${listName} else -1)`;
+      }
+      else if (type === 'data_clear_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `${listName}.clear()\n`;
+      }
+      else if (type === 'data_count_in_list') {
+        const item = getInputValue(block, 'ITEM', '0');
+        const listName = block.getFieldValue('LIST');
+        line = `${listName}.count(${item})`;
+      }
+      else if (type === 'data_min_of_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `min(${listName})`;
+      }
+      else if (type === 'data_max_of_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `max(${listName})`;
+      }
+      else if (type === 'data_sum_of_list') {
+        const listName = block.getFieldValue('LIST');
+        line = `sum(${listName})`;
+      }
+
+      // Advanced Control Flow (156-165)
+      else if (type === 'control_for_loop') {
+        const varName = block.getFieldValue('VAR');
+        const from = getInputValue(block, 'FROM', '1');
+        const to = getInputValue(block, 'TO', '10');
+        line = `for ${varName} in range(${from}, ${to} + 1):\n`;
+        const child = block.getInputTargetBlock('DO');
+        let childCode = processStack(child);
+        if (!childCode) childCode = "    pass\n";
+        line += childCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_while_loop') {
+        const condition = getInputValue(block, 'CONDITION', 'True');
+        line = `while ${condition}:\n`;
+        const child = block.getInputTargetBlock('DO');
+        let childCode = processStack(child);
+        if (!childCode) childCode = "    pass\n";
+        line += childCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_break') {
+        line = `break\n`;
+      }
+      else if (type === 'control_continue') {
+        line = `continue\n`;
+      }
+      else if (type === 'control_for_each') {
+        const varName = block.getFieldValue('VAR');
+        const listName = block.getFieldValue('LIST');
+        line = `for ${varName} in ${listName}:\n`;
+        const child = block.getInputTargetBlock('DO');
+        let childCode = processStack(child);
+        if (!childCode) childCode = "    pass\n";
+        line += childCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_switch') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `# Switch statement for ${value}\n`;
+        const cases = block.getInputTargetBlock('CASES');
+        if (cases) line += processStack(cases);
+      }
+      else if (type === 'control_case') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `if _switch_value == ${value}:\n`;
+        const child = block.getInputTargetBlock('DO');
+        let childCode = processStack(child);
+        if (!childCode) childCode = "    pass\n";
+        line += childCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_default') {
+        line = `else:\n`;
+        const child = block.getInputTargetBlock('DO');
+        let childCode = processStack(child);
+        if (!childCode) childCode = "    pass\n";
+        line += childCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_try_catch') {
+        line = `try:\n`;
+        const tryBlock = block.getInputTargetBlock('TRY');
+        let tryCode = processStack(tryBlock);
+        if (!tryCode) tryCode = "    pass\n";
+        line += tryCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+        line += `except Exception as e:\n`;
+        const catchBlock = block.getInputTargetBlock('CATCH');
+        let catchCode = processStack(catchBlock);
+        if (!catchCode) catchCode = "    pass\n";
+        line += catchCode.split('\n').map(l => l ? '    ' + l : '').join('\n') + "\n";
+      }
+      else if (type === 'control_ternary') {
+        const condition = getInputValue(block, 'CONDITION', 'True');
+        const trueVal = getInputValue(block, 'TRUE', '1');
+        const falseVal = getInputValue(block, 'FALSE', '0');
+        line = `(${trueVal} if ${condition} else ${falseVal})`;
+      }
+
+      // Conversion & Type Blocks (166-170)
+      else if (type === 'operator_to_string') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `str(${value})`;
+      }
+      else if (type === 'operator_to_number') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `float(${value})`;
+      }
+      else if (type === 'operator_to_boolean') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `bool(${value})`;
+      }
+      else if (type === 'operator_is_number') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `isinstance(${value}, (int, float))`;
+      }
+      else if (type === 'operator_is_text') {
+        const value = getInputValue(block, 'VALUE', '0');
+        line = `isinstance(${value}, str)`;
+      }
+
+      // Time & Date (171-175)
+      else if (type === 'time_current') {
+        const unit = block.getFieldValue('UNIT');
+        if (unit === 'TIME') line = `time.time()`;
+        else if (unit === 'MILLIS') line = `int(time.time() * 1000)`;
+        else if (unit === 'SECS') line = `int(time.time())`;
+        else if (unit === 'MINS') line = `int(time.time() / 60)`;
+        else if (unit === 'HOURS') line = `int(time.time() / 3600)`;
+      }
+      else if (type === 'time_delay_ms') {
+        const ms = getInputValue(block, 'MS', '1000');
+        line = `await runloop.sleep_ms(${ms})\n`;
+      }
+      else if (type === 'time_ticks') {
+        const tickType = block.getFieldValue('TYPE');
+        if (tickType === 'MS') line = `time.ticks_ms()`;
+        else if (tickType === 'US') line = `time.ticks_us()`;
+        else if (tickType === 'CPU') line = `time.ticks_cpu()`;
+      }
+      else if (type === 'time_elapsed') {
+        const start = getInputValue(block, 'START', '0');
+        const end = getInputValue(block, 'END', '0');
+        line = `(${end} - ${start})`;
+      }
+      else if (type === 'time_format') {
+        const timeVal = getInputValue(block, 'TIME', '0');
+        const format = block.getFieldValue('FORMAT');
+        line = `time.strftime("${format}", time.localtime(${timeVal}))`;
+      }
       
       return line;
     };
@@ -750,40 +1116,126 @@ const App = () => {
 
   useEffect(() => {
     const setupWorkspace = (Blockly) => {
-      // Flowbite/Heroicons style SVG icons
-      const createIconDataUri = (svgContent) => {
-        return `data:image/svg+xml;base64,${btoa(svgContent)}`;
-      };
+      const scratchTheme = createScratchTheme(Blockly);
+      
+      // Register all blocks from modular files
+      registerAllBlocks(Blockly, icons);
 
-      const icons = {
-        motor: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 0 1 9 14.437V9.564Z"/></svg>'),
-        car: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg>'),
-        loop: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>'),
-        flag: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"/></svg>'),
-        app: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>'),
-        sensor: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M9.348 14.652a3.75 3.75 0 0 1 0-5.304m5.304 0a3.75 3.75 0 0 1 0 5.304m-7.425 2.121a6.75 6.75 0 0 1 0-9.546m9.546 0a6.75 6.75 0 0 1 0 9.546M5.106 18.894c-3.808-3.807-3.808-9.98 0-13.788m13.788 0c3.808 3.807 3.808 9.98 0 13.788M12 12h.008v.008H12V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"/></svg>'),
-        hub: createIconDataUri('<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z"/></svg>')
-      };
-
-      const scratchTheme = Blockly.Theme.defineTheme('scratch', {
-        'base': Blockly.Themes.Classic,
-        'blockStyles': {
-          'motion_blocks': { 'colourPrimary': "#4C97FF", 'colourSecondary': "#4280D7", 'colourTertiary': "#3373CC" },
-          'events_blocks': { 'colourPrimary': "#FFBF00", 'colourSecondary': "#E6AC00", 'colourTertiary': "#CC9900" },
-          'control_blocks': { 'colourPrimary': "#FFAB19", 'colourSecondary': "#EC9C13", 'colourTertiary': "#CF8B17" },
-          'app_blocks': { 'colourPrimary': "#9966FF", 'colourSecondary': "#855CD6", 'colourTertiary': "#774DCB" },
-          'sensor_blocks': { 'colourPrimary': "#40BF4A", 'colourSecondary': "#389438", 'colourTertiary': "#2E7D32" },
-          'hub_blocks': { 'colourPrimary': "#FF6680", 'colourSecondary': "#FF4D6A", 'colourTertiary': "#E63946" }
-        },
-        'componentStyles': {
-          'workspaceBackgroundColour': '#F9F9F9',
-          'toolboxBackgroundColour': '#FFFFFF',
-          'flyoutBackgroundColour': '#F9F9F9',
-          'flyoutOpacity': 0.9,
-          'scrollbarColour': '#CECECE',
-        },
-        'fontStyle': { 'family': 'Helvetica, Arial, sans-serif', 'weight': 'bold', 'size': 12 }
-      });
+      // ========================================
+      // SPIKE API BLOCKS (scaffold, 50 blocks)
+      // ========================================
+      // Bargraph
+      Blockly.Blocks['spike_bargraph_change'] = {init: function() {this.jsonInit({"message0": "bargraph change color %1 value %2", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}, {"type": "input_value", "name": "VALUE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 52, "tooltip": "Change bargraph value"});}};
+      Blockly.Blocks['spike_bargraph_clear_all'] = {init: function() {this.jsonInit({"message0": "bargraph clear all", "previousStatement": null, "nextStatement": null, "colour": 52, "tooltip": "Clear all bargraph values"});}};
+      Blockly.Blocks['spike_bargraph_get_value'] = {init: function() {this.jsonInit({"message0": "bargraph get value color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 52, "tooltip": "Get bargraph value"});}};
+      Blockly.Blocks['spike_bargraph_set_value'] = {init: function() {this.jsonInit({"message0": "bargraph set color %1 value %2", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}, {"type": "input_value", "name": "VALUE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 52, "tooltip": "Set bargraph value"});}};
+      Blockly.Blocks['spike_bargraph_show'] = {init: function() {this.jsonInit({"message0": "bargraph show fullscreen %1", "args0": [{"type": "input_value", "name": "FULLSCREEN", "check": "Boolean"}], "previousStatement": null, "nextStatement": null, "colour": 52, "tooltip": "Show bargraph"});}};
+      Blockly.Blocks['spike_bargraph_hide'] = {init: function() {this.jsonInit({"message0": "bargraph hide", "previousStatement": null, "nextStatement": null, "colour": 52, "tooltip": "Hide bargraph"});}};
+      // Display
+      Blockly.Blocks['spike_display_image'] = {init: function() {this.jsonInit({"message0": "display image %1", "args0": [{"type": "input_value", "name": "IMAGE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 60, "tooltip": "Show image on display"});}};
+      Blockly.Blocks['spike_display_text'] = {init: function() {this.jsonInit({"message0": "display text %1", "args0": [{"type": "input_value", "name": "TEXT", "check": "String"}], "previousStatement": null, "nextStatement": null, "colour": 60, "tooltip": "Show text on display"});}};
+      Blockly.Blocks['spike_display_show'] = {init: function() {this.jsonInit({"message0": "display show fullscreen %1", "args0": [{"type": "input_value", "name": "FULLSCREEN", "check": "Boolean"}], "previousStatement": null, "nextStatement": null, "colour": 60, "tooltip": "Show display"});}};
+      Blockly.Blocks['spike_display_hide'] = {init: function() {this.jsonInit({"message0": "display hide", "previousStatement": null, "nextStatement": null, "colour": 60, "tooltip": "Hide display"});}};
+      // Linegraph
+      Blockly.Blocks['spike_linegraph_clear'] = {init: function() {this.jsonInit({"message0": "linegraph clear color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 70, "tooltip": "Clear linegraph for color"});}};
+      Blockly.Blocks['spike_linegraph_clear_all'] = {init: function() {this.jsonInit({"message0": "linegraph clear all", "previousStatement": null, "nextStatement": null, "colour": 70, "tooltip": "Clear all linegraphs"});}};
+      Blockly.Blocks['spike_linegraph_get_average'] = {init: function() {this.jsonInit({"message0": "linegraph get average color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 70, "tooltip": "Get average value"});}};
+      Blockly.Blocks['spike_linegraph_get_last'] = {init: function() {this.jsonInit({"message0": "linegraph get last color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 70, "tooltip": "Get last value"});}};
+      Blockly.Blocks['spike_linegraph_get_max'] = {init: function() {this.jsonInit({"message0": "linegraph get max color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 70, "tooltip": "Get max value"});}};
+      Blockly.Blocks['spike_linegraph_get_min'] = {init: function() {this.jsonInit({"message0": "linegraph get min color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 70, "tooltip": "Get min value"});}};
+      Blockly.Blocks['spike_linegraph_plot'] = {init: function() {this.jsonInit({"message0": "linegraph plot color %1 x %2 y %3", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}, {"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 70, "tooltip": "Plot value on linegraph"});}};
+      Blockly.Blocks['spike_linegraph_show'] = {init: function() {this.jsonInit({"message0": "linegraph show fullscreen %1", "args0": [{"type": "input_value", "name": "FULLSCREEN", "check": "Boolean"}], "previousStatement": null, "nextStatement": null, "colour": 70, "tooltip": "Show linegraph"});}};
+      Blockly.Blocks['spike_linegraph_hide'] = {init: function() {this.jsonInit({"message0": "linegraph hide", "previousStatement": null, "nextStatement": null, "colour": 70, "tooltip": "Hide linegraph"});}};
+      // Music
+      Blockly.Blocks['spike_music_play_drum'] = {init: function() {this.jsonInit({"message0": "music play drum %1", "args0": [{"type": "input_value", "name": "DRUM", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 80, "tooltip": "Play drum sound"});}};
+      Blockly.Blocks['spike_music_play_instrument'] = {init: function() {this.jsonInit({"message0": "music play instrument %1 note %2 duration %3", "args0": [{"type": "input_value", "name": "INSTRUMENT", "check": "Number"}, {"type": "input_value", "name": "NOTE", "check": "Number"}, {"type": "input_value", "name": "DURATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 80, "tooltip": "Play instrument sound"});}};
+      // Sound
+      Blockly.Blocks['spike_sound_play'] = {init: function() {this.jsonInit({"message0": "sound play name %1 volume %2 pitch %3 pan %4", "args0": [{"type": "input_value", "name": "NAME", "check": "String"}, {"type": "input_value", "name": "VOLUME", "check": "Number"}, {"type": "input_value", "name": "PITCH", "check": "Number"}, {"type": "input_value", "name": "PAN", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 90, "tooltip": "Play sound"});}};
+      Blockly.Blocks['spike_sound_set_attributes'] = {init: function() {this.jsonInit({"message0": "sound set volume %1 pitch %2 pan %3", "args0": [{"type": "input_value", "name": "VOLUME", "check": "Number"}, {"type": "input_value", "name": "PITCH", "check": "Number"}, {"type": "input_value", "name": "PAN", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 90, "tooltip": "Set sound attributes"});}};
+      Blockly.Blocks['spike_sound_stop'] = {init: function() {this.jsonInit({"message0": "sound stop", "previousStatement": null, "nextStatement": null, "colour": 90, "tooltip": "Stop sound"});}};
+      // Color Matrix
+      Blockly.Blocks['spike_color_matrix_clear'] = {init: function() {this.jsonInit({"message0": "color matrix clear port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 100, "tooltip": "Clear color matrix"});}};
+      Blockly.Blocks['spike_color_matrix_get_pixel'] = {init: function() {this.jsonInit({"message0": "color matrix get pixel port %1 x %2 y %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}], "output": "Number", "colour": 100, "tooltip": "Get color matrix pixel"});}};
+      Blockly.Blocks['spike_color_matrix_set_pixel'] = {init: function() {this.jsonInit({"message0": "color matrix set pixel port %1 x %2 y %3 pixel %4", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}, {"type": "input_value", "name": "PIXEL", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 100, "tooltip": "Set color matrix pixel"});}};
+      Blockly.Blocks['spike_color_matrix_show'] = {init: function() {this.jsonInit({"message0": "color matrix show port %1 pixels %2", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "PIXELS", "check": "Array"}], "previousStatement": null, "nextStatement": null, "colour": 100, "tooltip": "Show color matrix pixels"});}};
+      // Color Sensor
+      Blockly.Blocks['spike_color_sensor_color'] = {init: function() {this.jsonInit({"message0": "color sensor color port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 110, "tooltip": "Get color sensor color"});}};
+      Blockly.Blocks['spike_color_sensor_reflection'] = {init: function() {this.jsonInit({"message0": "color sensor reflection port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 110, "tooltip": "Get color sensor reflection"});}};
+      Blockly.Blocks['spike_color_sensor_rgbi'] = {init: function() {this.jsonInit({"message0": "color sensor rgbi port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Array", "colour": 110, "tooltip": "Get color sensor RGBAI"});}};
+      // Device
+      Blockly.Blocks['spike_device_data'] = {init: function() {this.jsonInit({"message0": "device data port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Array", "colour": 120, "tooltip": "Get device data"});}};
+      Blockly.Blocks['spike_device_id'] = {init: function() {this.jsonInit({"message0": "device id port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 120, "tooltip": "Get device id"});}};
+      Blockly.Blocks['spike_device_get_duty_cycle'] = {init: function() {this.jsonInit({"message0": "device get duty cycle port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 120, "tooltip": "Get device duty cycle"});}};
+      Blockly.Blocks['spike_device_ready'] = {init: function() {this.jsonInit({"message0": "device ready port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Boolean", "colour": 120, "tooltip": "Check device ready"});}};
+      Blockly.Blocks['spike_device_set_duty_cycle'] = {init: function() {this.jsonInit({"message0": "device set duty cycle port %1 value %2", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "DUTY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 120, "tooltip": "Set device duty cycle"});}};
+      // Distance Sensor
+      Blockly.Blocks['spike_distance_sensor_clear'] = {init: function() {this.jsonInit({"message0": "distance sensor clear port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 130, "tooltip": "Clear distance sensor lights"});}};
+      Blockly.Blocks['spike_distance_sensor_distance'] = {init: function() {this.jsonInit({"message0": "distance sensor distance port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 130, "tooltip": "Get distance in mm"});}};
+      Blockly.Blocks['spike_distance_sensor_get_pixel'] = {init: function() {this.jsonInit({"message0": "distance sensor get pixel port %1 x %2 y %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}], "output": "Number", "colour": 130, "tooltip": "Get distance sensor pixel"});}};
+      Blockly.Blocks['spike_distance_sensor_set_pixel'] = {init: function() {this.jsonInit({"message0": "distance sensor set pixel port %1 x %2 y %3 intensity %4", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}, {"type": "input_value", "name": "INTENSITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 130, "tooltip": "Set distance sensor pixel intensity"});}};
+      Blockly.Blocks['spike_distance_sensor_show'] = {init: function() {this.jsonInit({"message0": "distance sensor show port %1 pixels %2", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "PIXELS", "check": "Array"}], "previousStatement": null, "nextStatement": null, "colour": 130, "tooltip": "Show distance sensor pixels"});}};
+      // Force Sensor
+      Blockly.Blocks['spike_force_sensor_force'] = {init: function() {this.jsonInit({"message0": "force sensor force port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 140, "tooltip": "Get force sensor value"});}};
+      Blockly.Blocks['spike_force_sensor_pressed'] = {init: function() {this.jsonInit({"message0": "force sensor pressed port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Boolean", "colour": 140, "tooltip": "Check force sensor pressed"});}};
+      Blockly.Blocks['spike_force_sensor_raw'] = {init: function() {this.jsonInit({"message0": "force sensor raw port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 140, "tooltip": "Get force sensor raw value"});}};
+      // Hub Button
+      Blockly.Blocks['spike_button_pressed'] = {init: function() {this.jsonInit({"message0": "button pressed %1", "args0": [{"type": "input_value", "name": "BUTTON", "check": "Number"}], "output": "Number", "colour": 150, "tooltip": "Get button press duration"});}};
+      // Hub Light
+      Blockly.Blocks['spike_light_color'] = {init: function() {this.jsonInit({"message0": "light color %1 color %2", "args0": [{"type": "input_value", "name": "LIGHT", "check": "Number"}, {"type": "input_value", "name": "COLOR", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 160, "tooltip": "Set hub light color"});}};
+      // Hub Light Matrix
+      Blockly.Blocks['spike_light_matrix_clear'] = {init: function() {this.jsonInit({"message0": "light matrix clear", "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Clear light matrix"});}};
+      Blockly.Blocks['spike_light_matrix_get_orientation'] = {init: function() {this.jsonInit({"message0": "light matrix get orientation", "output": "Number", "colour": 170, "tooltip": "Get light matrix orientation"});}};
+      Blockly.Blocks['spike_light_matrix_get_pixel'] = {init: function() {this.jsonInit({"message0": "light matrix get pixel x %1 y %2", "args0": [{"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}], "output": "Number", "colour": 170, "tooltip": "Get light matrix pixel"});}};
+      Blockly.Blocks['spike_light_matrix_set_orientation'] = {init: function() {this.jsonInit({"message0": "light matrix set orientation top %1", "args0": [{"type": "input_value", "name": "TOP", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Set light matrix orientation"});}};
+      Blockly.Blocks['spike_light_matrix_set_pixel'] = {init: function() {this.jsonInit({"message0": "light matrix set pixel x %1 y %2 intensity %3", "args0": [{"type": "input_value", "name": "X", "check": "Number"}, {"type": "input_value", "name": "Y", "check": "Number"}, {"type": "input_value", "name": "INTENSITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Set light matrix pixel intensity"});}};
+      Blockly.Blocks['spike_light_matrix_show'] = {init: function() {this.jsonInit({"message0": "light matrix show pixels %1", "args0": [{"type": "input_value", "name": "PIXELS", "check": "Array"}], "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Show light matrix pixels"});}};
+      Blockly.Blocks['spike_light_matrix_show_image'] = {init: function() {this.jsonInit({"message0": "light matrix show image %1", "args0": [{"type": "input_value", "name": "IMAGE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Show built-in image"});}};
+      Blockly.Blocks['spike_light_matrix_write'] = {init: function() {this.jsonInit({"message0": "light matrix write text %1 intensity %2 time per char %3", "args0": [{"type": "input_value", "name": "TEXT", "check": "String"}, {"type": "input_value", "name": "INTENSITY", "check": "Number"}, {"type": "input_value", "name": "TIME", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 170, "tooltip": "Scroll text on matrix"});}};
+      // Hub Motion Sensor
+      Blockly.Blocks['spike_motion_sensor_acceleration'] = {init: function() {this.jsonInit({"message0": "motion sensor acceleration raw %1", "args0": [{"type": "input_value", "name": "RAW", "check": "Boolean"}], "output": "Array", "colour": 180, "tooltip": "Get acceleration"});}};
+      Blockly.Blocks['spike_motion_sensor_angular_velocity'] = {init: function() {this.jsonInit({"message0": "motion sensor angular velocity raw %1", "args0": [{"type": "input_value", "name": "RAW", "check": "Boolean"}], "output": "Array", "colour": 180, "tooltip": "Get angular velocity"});}};
+      Blockly.Blocks['spike_motion_sensor_gesture'] = {init: function() {this.jsonInit({"message0": "motion sensor gesture", "output": "String", "colour": 180, "tooltip": "Get gesture"});}};
+      Blockly.Blocks['spike_motion_sensor_get_yaw_face'] = {init: function() {this.jsonInit({"message0": "motion sensor get yaw face", "output": "Number", "colour": 180, "tooltip": "Get yaw face"});}};
+      Blockly.Blocks['spike_motion_sensor_quaternion'] = {init: function() {this.jsonInit({"message0": "motion sensor quaternion", "output": "Array", "colour": 180, "tooltip": "Get quaternion"});}};
+      Blockly.Blocks['spike_motion_sensor_reset_tap_count'] = {init: function() {this.jsonInit({"message0": "motion sensor reset tap count", "previousStatement": null, "nextStatement": null, "colour": 180, "tooltip": "Reset tap count"});}};
+      Blockly.Blocks['spike_motion_sensor_reset_yaw'] = {init: function() {this.jsonInit({"message0": "motion sensor reset yaw angle %1", "args0": [{"type": "input_value", "name": "ANGLE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 180, "tooltip": "Reset yaw angle"});}};
+      Blockly.Blocks['spike_motion_sensor_set_yaw_face'] = {init: function() {this.jsonInit({"message0": "motion sensor set yaw face up %1", "args0": [{"type": "input_value", "name": "UP", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 180, "tooltip": "Set yaw face"});}};
+      Blockly.Blocks['spike_motion_sensor_stable'] = {init: function() {this.jsonInit({"message0": "motion sensor stable", "output": "Boolean", "colour": 180, "tooltip": "Check if stable"});}};
+      Blockly.Blocks['spike_motion_sensor_tap_count'] = {init: function() {this.jsonInit({"message0": "motion sensor tap count", "output": "Number", "colour": 180, "tooltip": "Get tap count"});}};
+      Blockly.Blocks['spike_motion_sensor_tilt_angles'] = {init: function() {this.jsonInit({"message0": "motion sensor tilt angles", "output": "Array", "colour": 180, "tooltip": "Get tilt angles"});}};
+      Blockly.Blocks['spike_motion_sensor_up_face'] = {init: function() {this.jsonInit({"message0": "motion sensor up face", "output": "Number", "colour": 180, "tooltip": "Get up face"});}};
+      // Hub
+      Blockly.Blocks['spike_device_uuid'] = {init: function() {this.jsonInit({"message0": "device uuid", "output": "String", "colour": 190, "tooltip": "Get device UUID"});}};
+      Blockly.Blocks['spike_hardware_id'] = {init: function() {this.jsonInit({"message0": "hardware id", "output": "String", "colour": 190, "tooltip": "Get hardware ID"});}};
+      Blockly.Blocks['spike_power_off'] = {init: function() {this.jsonInit({"message0": "power off", "previousStatement": null, "nextStatement": null, "colour": 190, "tooltip": "Power off hub"});}};
+      Blockly.Blocks['spike_temperature'] = {init: function() {this.jsonInit({"message0": "temperature", "output": "Number", "colour": 190, "tooltip": "Get hub temperature"});}};
+      // Motor
+      Blockly.Blocks['spike_motor_absolute_position'] = {init: function() {this.jsonInit({"message0": "motor absolute position port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 200, "tooltip": "Get absolute position"});}};
+      Blockly.Blocks['spike_motor_get_duty_cycle'] = {init: function() {this.jsonInit({"message0": "motor get duty cycle port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 200, "tooltip": "Get duty cycle"});}};
+      Blockly.Blocks['spike_motor_relative_position'] = {init: function() {this.jsonInit({"message0": "motor relative position port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 200, "tooltip": "Get relative position"});}};
+      Blockly.Blocks['spike_motor_reset_relative_position'] = {init: function() {this.jsonInit({"message0": "motor reset relative position port %1 position %2", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "POSITION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Reset relative position"});}};
+      Blockly.Blocks['spike_motor_run'] = {init: function() {this.jsonInit({"message0": "motor run port %1 velocity %2 acceleration %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}, {"type": "input_value", "name": "ACCELERATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Run motor"});}};
+      Blockly.Blocks['spike_motor_run_for_degrees'] = {init: function() {this.jsonInit({"message0": "motor run for degrees port %1 degrees %2 velocity %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "DEGREES", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Run for degrees"});}};
+      Blockly.Blocks['spike_motor_run_for_time'] = {init: function() {this.jsonInit({"message0": "motor run for time port %1 duration %2 velocity %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "DURATION", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Run for time"});}};
+      Blockly.Blocks['spike_motor_run_to_absolute_position'] = {init: function() {this.jsonInit({"message0": "motor run to absolute position port %1 position %2 velocity %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "POSITION", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Run to absolute position"});}};
+      Blockly.Blocks['spike_motor_run_to_relative_position'] = {init: function() {this.jsonInit({"message0": "motor run to relative position port %1 position %2 velocity %3", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "POSITION", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Run to relative position"});}};
+      Blockly.Blocks['spike_motor_set_duty_cycle'] = {init: function() {this.jsonInit({"message0": "motor set duty cycle port %1 pwm %2", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}, {"type": "input_value", "name": "PWM", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Set duty cycle"});}};
+      Blockly.Blocks['spike_motor_stop'] = {init: function() {this.jsonInit({"message0": "motor stop port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 200, "tooltip": "Stop motor"});}};
+      Blockly.Blocks['spike_motor_velocity'] = {init: function() {this.jsonInit({"message0": "motor velocity port %1", "args0": [{"type": "input_value", "name": "PORT", "check": "Number"}], "output": "Number", "colour": 200, "tooltip": "Get velocity"});}};
+      // Motor Pair
+      Blockly.Blocks['spike_motor_pair_pair'] = {init: function() {this.jsonInit({"message0": "motor pair pair %1 left %2 right %3", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "LEFT", "check": "Number"}, {"type": "input_value", "name": "RIGHT", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Pair motors"});}};
+      Blockly.Blocks['spike_motor_pair_move'] = {init: function() {this.jsonInit({"message0": "motor pair move %1 steering %2 velocity %3 acceleration %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "STEERING", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}, {"type": "input_value", "name": "ACCELERATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Move motor pair"});}};
+      Blockly.Blocks['spike_motor_pair_move_for_degrees'] = {init: function() {this.jsonInit({"message0": "motor pair move for degrees %1 degrees %2 steering %3 velocity %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "DEGREES", "check": "Number"}, {"type": "input_value", "name": "STEERING", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Move for degrees"});}};
+      Blockly.Blocks['spike_motor_pair_move_for_time'] = {init: function() {this.jsonInit({"message0": "motor pair move for time %1 duration %2 steering %3 velocity %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "DURATION", "check": "Number"}, {"type": "input_value", "name": "STEERING", "check": "Number"}, {"type": "input_value", "name": "VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Move for time"});}};
+      Blockly.Blocks['spike_motor_pair_move_tank'] = {init: function() {this.jsonInit({"message0": "motor pair move tank %1 left velocity %2 right velocity %3 acceleration %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "LEFT_VELOCITY", "check": "Number"}, {"type": "input_value", "name": "RIGHT_VELOCITY", "check": "Number"}, {"type": "input_value", "name": "ACCELERATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Tank move"});}};
+      Blockly.Blocks['spike_motor_pair_move_tank_for_degrees'] = {init: function() {this.jsonInit({"message0": "motor pair move tank for degrees %1 degrees %2 left velocity %3 right velocity %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "DEGREES", "check": "Number"}, {"type": "input_value", "name": "LEFT_VELOCITY", "check": "Number"}, {"type": "input_value", "name": "RIGHT_VELOCITY", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Tank move for degrees"});}};
+      Blockly.Blocks['spike_motor_pair_move_tank_for_time'] = {init: function() {this.jsonInit({"message0": "motor pair move tank for time %1 left velocity %2 right velocity %3 duration %4", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}, {"type": "input_value", "name": "LEFT_VELOCITY", "check": "Number"}, {"type": "input_value", "name": "RIGHT_VELOCITY", "check": "Number"}, {"type": "input_value", "name": "DURATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Tank move for time"});}};
+      Blockly.Blocks['spike_motor_pair_stop'] = {init: function() {this.jsonInit({"message0": "motor pair stop %1", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Stop motor pair"});}};
+      Blockly.Blocks['spike_motor_pair_unpair'] = {init: function() {this.jsonInit({"message0": "motor pair unpair %1", "args0": [{"type": "input_value", "name": "PAIR", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 210, "tooltip": "Unpair motors"});}};
+      // Runloop
+      Blockly.Blocks['spike_runloop_run'] = {init: function() {this.jsonInit({"message0": "runloop run functions %1", "args0": [{"type": "input_value", "name": "FUNCTIONS", "check": "Array"}], "previousStatement": null, "nextStatement": null, "colour": 220, "tooltip": "Run async functions"});}};
+      Blockly.Blocks['spike_runloop_sleep_ms'] = {init: function() {this.jsonInit({"message0": "runloop sleep ms %1", "args0": [{"type": "input_value", "name": "DURATION", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 220, "tooltip": "Sleep ms"});}};
+      Blockly.Blocks['spike_runloop_until'] = {init: function() {this.jsonInit({"message0": "runloop until condition %1 timeout %2", "args0": [{"type": "input_value", "name": "CONDITION", "check": "Boolean"}, {"type": "input_value", "name": "TIMEOUT", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 220, "tooltip": "Wait until condition or timeout"});}};
 
       // ========================================
       // App Module Blocks (10 คำสั่งแรก)
@@ -2085,7 +2537,7 @@ const App = () => {
       Blockly.Blocks['event_whenflagclicked'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 เมื่อคลิก",
+            "message0": "%1 when clicked",
             "args0": [
               { "type": "field_image", "src": icons.flag, "width": 20, "height": 20, "alt": "🏁" }
             ],
@@ -2610,7 +3062,7 @@ const App = () => {
       Blockly.Blocks['control_wait'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 รอ %2 วินาที",
+            "message0": "%1 wait %2 seconds",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "field_number", "name": "DURATION", "value": 1 }
@@ -2625,7 +3077,7 @@ const App = () => {
       Blockly.Blocks['control_forever'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 วนซ้ำตลอด %2",
+            "message0": "%1 forever %2",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "input_statement", "name": "SUBSTACK" }
@@ -2644,7 +3096,7 @@ const App = () => {
       Blockly.Blocks['control_repeat'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 ทำซ้ำ %2 ครั้ง %3",
+            "message0": "%1 repeat %2 times %3",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "field_number", "name": "TIMES", "value": 10, "min": 1 },
@@ -2662,7 +3114,7 @@ const App = () => {
       Blockly.Blocks['control_repeat_until'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 ทำซ้ำจนกว่า %2 %3",
+            "message0": "%1 repeat until %2 %3",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
@@ -2680,7 +3132,7 @@ const App = () => {
       Blockly.Blocks['control_if'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 ถ้า %2 แล้ว %3",
+            "message0": "%1 if %2 then %3",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
@@ -2698,7 +3150,7 @@ const App = () => {
       Blockly.Blocks['control_if_else'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 ถ้า %2 แล้ว %3 มิฉะนั้น %4",
+            "message0": "%1 if %2 then %3 else %4",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
@@ -2717,7 +3169,7 @@ const App = () => {
       Blockly.Blocks['control_wait_until'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 รอจนกว่า %2",
+            "message0": "%1 wait until %2",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" },
               { "type": "input_value", "name": "CONDITION", "check": "Boolean" }
@@ -2734,7 +3186,7 @@ const App = () => {
       Blockly.Blocks['control_stop_all'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 หยุดทั้งหมด",
+            "message0": "%1 stop all",
             "args0": [
               { "type": "field_image", "src": icons.loop, "width": 20, "height": 20, "alt": "🔄" }
             ],
@@ -2758,6 +3210,7 @@ const App = () => {
               { "type": "input_value", "name": "NUM1", "check": "Number" },
               { "type": "input_value", "name": "NUM2", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Add two numbers"
@@ -2774,6 +3227,7 @@ const App = () => {
               { "type": "input_value", "name": "NUM1", "check": "Number" },
               { "type": "input_value", "name": "NUM2", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Subtract two numbers"
@@ -2790,6 +3244,7 @@ const App = () => {
               { "type": "input_value", "name": "NUM1", "check": "Number" },
               { "type": "input_value", "name": "NUM2", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Multiply two numbers"
@@ -2806,6 +3261,7 @@ const App = () => {
               { "type": "input_value", "name": "NUM1", "check": "Number" },
               { "type": "input_value", "name": "NUM2", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Divide two numbers"
@@ -2817,11 +3273,12 @@ const App = () => {
       Blockly.Blocks['operator_random'] = {
         init: function() {
           this.jsonInit({
-            "message0": "สุ่ม %1 ถึง %2",
+            "message0": "random %1 to %2",
             "args0": [
               { "type": "input_value", "name": "FROM", "check": "Number" },
               { "type": "input_value", "name": "TO", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Random number between range"
@@ -2838,6 +3295,7 @@ const App = () => {
               { "type": "input_value", "name": "NUM1", "check": "Number" },
               { "type": "input_value", "name": "NUM2", "check": "Number" }
             ],
+            "inputsInline": true,
             "output": "Number",
             "style": "control_blocks",
             "tooltip": "Modulo operation"
@@ -2849,7 +3307,7 @@ const App = () => {
       Blockly.Blocks['operator_round'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ปัดเศษ %1",
+            "message0": "round %1",
             "args0": [
               { "type": "input_value", "name": "NUM", "check": "Number" }
             ],
@@ -2864,7 +3322,7 @@ const App = () => {
       Blockly.Blocks['operator_mathop'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 ของ %2",
+            "message0": "%1 of %2",
             "args0": [
               { "type": "field_dropdown", "name": "OPERATOR", "options": [
                 ["abs", "abs"], ["floor", "floor"], ["ceiling", "ceiling"],
@@ -2881,137 +3339,55 @@ const App = () => {
       };
 
       // ========================================
-      // Operator Blocks - Comparison (คำสั่งที่ 102-107)
+      // Operator Blocks - Comparison (คำสั่งที่ 102-107) - CONSOLIDATED
       // ========================================
 
-      // 102. operator_equals
-      Blockly.Blocks['operator_equals'] = {
+      // Consolidated comparison block
+      Blockly.Blocks['operator_comparison'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 = %2",
+            "message0": "%1 %2 %3",
             "args0": [
               { "type": "input_value", "name": "OPERAND1" },
+              { "type": "field_dropdown", "name": "OP", "options": [
+                ["=", "EQ"],
+                ["≠", "NEQ"],
+                ["<", "LT"],
+                [">", "GT"],
+                ["≤", "LTE"],
+                ["≥", "GTE"]
+              ]},
               { "type": "input_value", "name": "OPERAND2" }
             ],
+            "inputsInline": true,
             "output": "Boolean",
             "style": "control_blocks",
-            "tooltip": "Check if equal"
-          });
-        }
-      };
-
-      // 103. operator_not_equals
-      Blockly.Blocks['operator_not_equals'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 ≠ %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1" },
-              { "type": "input_value", "name": "OPERAND2" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Check if not equal"
-          });
-        }
-      };
-
-      // 104. operator_less_than
-      Blockly.Blocks['operator_less_than'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 < %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1", "check": "Number" },
-              { "type": "input_value", "name": "OPERAND2", "check": "Number" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Check if less than"
-          });
-        }
-      };
-
-      // 105. operator_greater_than
-      Blockly.Blocks['operator_greater_than'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 > %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1", "check": "Number" },
-              { "type": "input_value", "name": "OPERAND2", "check": "Number" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Check if greater than"
-          });
-        }
-      };
-
-      // 106. operator_less_or_equal
-      Blockly.Blocks['operator_less_or_equal'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 ≤ %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1", "check": "Number" },
-              { "type": "input_value", "name": "OPERAND2", "check": "Number" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Check if less than or equal"
-          });
-        }
-      };
-
-      // 107. operator_greater_or_equal
-      Blockly.Blocks['operator_greater_or_equal'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 ≥ %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1", "check": "Number" },
-              { "type": "input_value", "name": "OPERAND2", "check": "Number" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Check if greater than or equal"
+            "tooltip": "Compare two values"
           });
         }
       };
 
       // ========================================
-      // Operator Blocks - Logic (คำสั่งที่ 108-110)
+      // Operator Blocks - Logic (คำสั่งที่ 108-110) - CONSOLIDATED
       // ========================================
 
-      // 108. operator_and
-      Blockly.Blocks['operator_and'] = {
+      // Consolidated logic block
+      Blockly.Blocks['operator_logic'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 และ %2",
+            "message0": "%1 %2 %3",
             "args0": [
               { "type": "input_value", "name": "OPERAND1", "check": "Boolean" },
+              { "type": "field_dropdown", "name": "OP", "options": [
+                ["and", "AND"],
+                ["or", "OR"]
+              ]},
               { "type": "input_value", "name": "OPERAND2", "check": "Boolean" }
             ],
+            "inputsInline": true,
             "output": "Boolean",
             "style": "control_blocks",
-            "tooltip": "Logical AND"
-          });
-        }
-      };
-
-      // 109. operator_or
-      Blockly.Blocks['operator_or'] = {
-        init: function() {
-          this.jsonInit({
-            "message0": "%1 หรือ %2",
-            "args0": [
-              { "type": "input_value", "name": "OPERAND1", "check": "Boolean" },
-              { "type": "input_value", "name": "OPERAND2", "check": "Boolean" }
-            ],
-            "output": "Boolean",
-            "style": "control_blocks",
-            "tooltip": "Logical OR"
+            "tooltip": "Logical operation"
           });
         }
       };
@@ -3020,7 +3396,7 @@ const App = () => {
       Blockly.Blocks['operator_not'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ไม่ใช่ %1",
+            "message0": "not %1",
             "args0": [
               { "type": "input_value", "name": "OPERAND", "check": "Boolean" }
             ],
@@ -3039,11 +3415,12 @@ const App = () => {
       Blockly.Blocks['operator_join'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ต่อ %1 กับ %2",
+            "message0": "join %1 %2",
             "args0": [
               { "type": "input_value", "name": "STRING1", "check": "String" },
               { "type": "input_value", "name": "STRING2", "check": "String" }
             ],
+            "inputsInline": true,
             "output": "String",
             "style": "control_blocks",
             "tooltip": "Join two strings"
@@ -3055,11 +3432,12 @@ const App = () => {
       Blockly.Blocks['operator_letter_of'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ตัวอักษรที่ %1 ของ %2",
+            "message0": "letter %1 of %2",
             "args0": [
               { "type": "input_value", "name": "LETTER", "check": "Number" },
               { "type": "input_value", "name": "STRING", "check": "String" }
             ],
+            "inputsInline": true,
             "output": "String",
             "style": "control_blocks",
             "tooltip": "Get letter at position"
@@ -3071,7 +3449,7 @@ const App = () => {
       Blockly.Blocks['operator_length'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ความยาวของ %1",
+            "message0": "length of %1",
             "args0": [
               { "type": "input_value", "name": "STRING", "check": "String" }
             ],
@@ -3086,11 +3464,12 @@ const App = () => {
       Blockly.Blocks['operator_contains'] = {
         init: function() {
           this.jsonInit({
-            "message0": "%1 มี %2 หรือไม่?",
+            "message0": "%1 contains %2 ?",
             "args0": [
               { "type": "input_value", "name": "STRING1", "check": "String" },
               { "type": "input_value", "name": "STRING2", "check": "String" }
             ],
+            "inputsInline": true,
             "output": "Boolean",
             "style": "control_blocks",
             "tooltip": "Check if string contains substring"
@@ -3106,11 +3485,12 @@ const App = () => {
       Blockly.Blocks['data_set_variable'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ตั้งค่า %1 เป็น %2",
+            "message0": "set %1 to %2",
             "args0": [
-              { "type": "field_input", "name": "VAR", "text": "ตัวแปร" },
+              { "type": "field_input", "name": "VAR", "text": "variable" },
               { "type": "input_value", "name": "VALUE" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3123,11 +3503,12 @@ const App = () => {
       Blockly.Blocks['data_change_variable'] = {
         init: function() {
           this.jsonInit({
-            "message0": "เปลี่ยน %1 โดย %2",
+            "message0": "change %1 by %2",
             "args0": [
-              { "type": "field_input", "name": "VAR", "text": "ตัวแปร" },
+              { "type": "field_input", "name": "VAR", "text": "variable" },
               { "type": "input_value", "name": "VALUE", "check": "Number" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3142,7 +3523,7 @@ const App = () => {
           this.jsonInit({
             "message0": "%1",
             "args0": [
-              { "type": "field_input", "name": "VAR", "text": "ตัวแปร" }
+              { "type": "field_input", "name": "VAR", "text": "variable" }
             ],
             "output": null,
             "style": "control_blocks",
@@ -3159,10 +3540,11 @@ const App = () => {
       Blockly.Blocks['data_create_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "สร้างลิสต์ [ ]",
+            "message0": "create list [ ]",
             "output": "Array",
             "style": "control_blocks",
-            "tooltip": "Create empty list"
+            "tooltip": "Create empty list",
+            "fontColour": "#222"
           });
         }
       };
@@ -3171,11 +3553,12 @@ const App = () => {
       Blockly.Blocks['data_add_to_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "เพิ่ม %1 ไปยังลิสต์ %2",
+            "message0": "add %1 to list %2",
             "args0": [
               { "type": "input_value", "name": "ITEM" },
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" }
+              { "type": "field_input", "name": "LIST", "text": "list", "spellcheck": false, "fontColour": "#222" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3188,11 +3571,12 @@ const App = () => {
       Blockly.Blocks['data_delete_from_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ลบตำแหน่งที่ %1 จากลิสต์ %2",
+            "message0": "delete %1 of list %2",
             "args0": [
               { "type": "input_value", "name": "INDEX", "check": "Number" },
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" }
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3205,12 +3589,13 @@ const App = () => {
       Blockly.Blocks['data_insert_at_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "แทรก %1 ที่ตำแหน่ง %2 ในลิสต์ %3",
+            "message0": "insert %1 at %2 of list %3",
             "args0": [
               { "type": "input_value", "name": "ITEM" },
               { "type": "input_value", "name": "INDEX", "check": "Number" },
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" }
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3223,12 +3608,13 @@ const App = () => {
       Blockly.Blocks['data_replace_in_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "แทนที่ตำแหน่งที่ %1 ในลิสต์ %2 ด้วย %3",
+            "message0": "replace item %1 of list %2 with %3",
             "args0": [
               { "type": "input_value", "name": "INDEX", "check": "Number" },
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" },
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" },
               { "type": "input_value", "name": "ITEM" }
             ],
+            "inputsInline": true,
             "previousStatement": null,
             "nextStatement": null,
             "style": "control_blocks",
@@ -3241,11 +3627,12 @@ const App = () => {
       Blockly.Blocks['data_item_of_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "รายการที่ %1 ของลิสต์ %2",
+            "message0": "item %1 of list %2",
             "args0": [
               { "type": "input_value", "name": "INDEX", "check": "Number" },
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" }
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" }
             ],
+            "inputsInline": true,
             "output": null,
             "style": "control_blocks",
             "tooltip": "Get item from list"
@@ -3257,9 +3644,9 @@ const App = () => {
       Blockly.Blocks['data_length_of_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ความยาวของลิสต์ %1",
+            "message0": "length of list %1",
             "args0": [
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" }
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" }
             ],
             "output": "Number",
             "style": "control_blocks",
@@ -3272,14 +3659,880 @@ const App = () => {
       Blockly.Blocks['data_contains_in_list'] = {
         init: function() {
           this.jsonInit({
-            "message0": "ลิสต์ %1 มี %2 หรือไม่?",
+            "message0": "list %1 contains %2 ?",
             "args0": [
-              { "type": "field_input", "name": "LIST", "text": "ลิสต์" },
+              { "type": "field_input", "name": "LIST", "text": "list", "fontColour": "#222" },
               { "type": "input_value", "name": "ITEM" }
             ],
+            "inputsInline": true,
             "output": "Boolean",
             "style": "control_blocks",
             "tooltip": "Check if list contains item"
+          });
+        }
+      };
+
+      // ========================================
+      // NEW BLOCKS - 50 Additional Commands
+      // ========================================
+
+      // Advanced Math Operations (126-135)
+      
+      // 126. operator_power
+      Blockly.Blocks['operator_power'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 ^ %2",
+            "args0": [
+              { "type": "input_value", "name": "BASE", "check": "Number" },
+              { "type": "input_value", "name": "EXPONENT", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Power operation"
+          });
+        }
+      };
+
+      // 127. operator_min
+      Blockly.Blocks['operator_min'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "min %1 %2",
+            "args0": [
+              { "type": "input_value", "name": "NUM1", "check": "Number" },
+              { "type": "input_value", "name": "NUM2", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Minimum of two numbers"
+          });
+        }
+      };
+
+      // 128. operator_max
+      Blockly.Blocks['operator_max'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "max %1 %2",
+            "args0": [
+              { "type": "input_value", "name": "NUM1", "check": "Number" },
+              { "type": "input_value", "name": "NUM2", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Maximum of two numbers"
+          });
+        }
+      };
+
+      // 129. operator_clamp
+      Blockly.Blocks['operator_clamp'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "clamp %1 between %2 and %3",
+            "args0": [
+              { "type": "input_value", "name": "VALUE", "check": "Number" },
+              { "type": "input_value", "name": "MIN", "check": "Number" },
+              { "type": "input_value", "name": "MAX", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Clamp value between min and max"
+          });
+        }
+      };
+
+      // 130. operator_map
+      Blockly.Blocks['operator_map'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "map %1 from %2 - %3 to %4 - %5",
+            "args0": [
+              { "type": "input_value", "name": "VALUE", "check": "Number" },
+              { "type": "input_value", "name": "FROM_LOW", "check": "Number" },
+              { "type": "input_value", "name": "FROM_HIGH", "check": "Number" },
+              { "type": "input_value", "name": "TO_LOW", "check": "Number" },
+              { "type": "input_value", "name": "TO_HIGH", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Map value from one range to another"
+          });
+        }
+      };
+
+      // 131. operator_constrain_angle
+      Blockly.Blocks['operator_constrain_angle'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "constrain angle %1",
+            "args0": [
+              { "type": "input_value", "name": "ANGLE", "check": "Number" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Constrain angle to 0-360"
+          });
+        }
+      };
+
+      // 132. operator_radians
+      Blockly.Blocks['operator_radians'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "radians %1",
+            "args0": [
+              { "type": "input_value", "name": "DEGREES", "check": "Number" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Convert degrees to radians"
+          });
+        }
+      };
+
+      // 133. operator_degrees
+      Blockly.Blocks['operator_degrees'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "degrees %1",
+            "args0": [
+              { "type": "input_value", "name": "RADIANS", "check": "Number" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Convert radians to degrees"
+          });
+        }
+      };
+
+      // 134. operator_percentage
+      Blockly.Blocks['operator_percentage'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 % of %2",
+            "args0": [
+              { "type": "input_value", "name": "PERCENT", "check": "Number" },
+              { "type": "input_value", "name": "VALUE", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Calculate percentage"
+          });
+        }
+      };
+
+      // 135. operator_average
+      Blockly.Blocks['operator_average'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "average of %1 %2",
+            "args0": [
+              { "type": "input_value", "name": "NUM1", "check": "Number" },
+              { "type": "input_value", "name": "NUM2", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Average of two numbers"
+          });
+        }
+      };
+
+      // Advanced Text Operations (136-145)
+
+      // 136. operator_uppercase
+      Blockly.Blocks['operator_uppercase'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "uppercase %1",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" }
+            ],
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Convert to uppercase"
+          });
+        }
+      };
+
+      // 137. operator_lowercase
+      Blockly.Blocks['operator_lowercase'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "lowercase %1",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" }
+            ],
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Convert to lowercase"
+          });
+        }
+      };
+
+      // 138. operator_trim
+      Blockly.Blocks['operator_trim'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "trim %1",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" }
+            ],
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Remove spaces from both ends"
+          });
+        }
+      };
+
+      // 139. operator_replace
+      Blockly.Blocks['operator_replace'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "replace %1 in %2 with %3",
+            "args0": [
+              { "type": "input_value", "name": "OLD", "check": "String" },
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "NEW", "check": "String" }
+            ],
+            "inputsInline": true,
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Replace text"
+          });
+        }
+      };
+
+      // 140. operator_split
+      Blockly.Blocks['operator_split'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "split %1 by %2",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "DELIMITER", "check": "String" }
+            ],
+            "inputsInline": true,
+            "output": "Array",
+            "style": "control_blocks",
+            "tooltip": "Split text into list"
+          });
+        }
+      };
+
+      // 141. operator_reverse_text
+      Blockly.Blocks['operator_reverse_text'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "reverse %1",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" }
+            ],
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Reverse text"
+          });
+        }
+      };
+
+      // 142. operator_starts_with
+      Blockly.Blocks['operator_starts_with'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 starts with %2 ?",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "PREFIX", "check": "String" }
+            ],
+            "inputsInline": true,
+            "output": "Boolean",
+            "style": "control_blocks",
+            "tooltip": "Check if text starts with prefix"
+          });
+        }
+      };
+
+      // 143. operator_ends_with
+      Blockly.Blocks['operator_ends_with'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 ends with %2 ?",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "SUFFIX", "check": "String" }
+            ],
+            "inputsInline": true,
+            "output": "Boolean",
+            "style": "control_blocks",
+            "tooltip": "Check if text ends with suffix"
+          });
+        }
+      };
+
+      // 144. operator_substring
+      Blockly.Blocks['operator_substring'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "substring of %1 from %2 to %3",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "START", "check": "Number" },
+              { "type": "input_value", "name": "END", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Get substring"
+          });
+        }
+      };
+
+      // 145. operator_repeat_text
+      Blockly.Blocks['operator_repeat_text'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "repeat %1 %2 times",
+            "args0": [
+              { "type": "input_value", "name": "TEXT", "check": "String" },
+              { "type": "input_value", "name": "TIMES", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Repeat text n times"
+          });
+        }
+      };
+
+      // Advanced List Operations (146-155)
+
+      // 146. data_sort_list
+      Blockly.Blocks['data_sort_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "sort list %1 %2",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" },
+              { "type": "field_dropdown", "name": "ORDER", "options": [
+                ["ascending", "ASC"],
+                ["descending", "DESC"]
+              ]}
+            ],
+            "inputsInline": true,
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Sort list"
+          });
+        }
+      };
+
+      // 147. data_reverse_list
+      Blockly.Blocks['data_reverse_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "reverse list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Reverse list"
+          });
+        }
+      };
+
+      // 148. data_shuffle_list
+      Blockly.Blocks['data_shuffle_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "shuffle list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Shuffle list randomly"
+          });
+        }
+      };
+
+      // 149. data_slice_list
+      Blockly.Blocks['data_slice_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "slice list %1 from %2 to %3",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" },
+              { "type": "input_value", "name": "START", "check": "Number" },
+              { "type": "input_value", "name": "END", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Array",
+            "style": "control_blocks",
+            "tooltip": "Get slice of list"
+          });
+        }
+      };
+
+      // 150. data_index_of
+      Blockly.Blocks['data_index_of'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "index of %1 in list %2",
+            "args0": [
+              { "type": "input_value", "name": "ITEM" },
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Find index of item"
+          });
+        }
+      };
+
+      // 151. data_clear_list
+      Blockly.Blocks['data_clear_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "clear list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Clear all items from list"
+          });
+        }
+      };
+
+      // 152. data_count_in_list
+      Blockly.Blocks['data_count_in_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "count %1 in list %2",
+            "args0": [
+              { "type": "input_value", "name": "ITEM" },
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Count occurrences in list"
+          });
+        }
+      };
+
+      // 153. data_min_of_list
+      Blockly.Blocks['data_min_of_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "min of list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Get minimum value"
+          });
+        }
+      };
+
+      // 154. data_max_of_list
+      Blockly.Blocks['data_max_of_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "max of list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Get maximum value"
+          });
+        }
+      };
+
+      // 155. data_sum_of_list
+      Blockly.Blocks['data_sum_of_list'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "sum of list %1",
+            "args0": [
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Sum all values in list"
+          });
+        }
+      };
+
+      // Advanced Control Flow (156-165)
+
+      // 156. control_for_loop
+      Blockly.Blocks['control_for_loop'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "for %1 from %2 to %3",
+            "args0": [
+              { "type": "field_input", "name": "VAR", "text": "i" },
+              { "type": "input_value", "name": "FROM", "check": "Number" },
+              { "type": "input_value", "name": "TO", "check": "Number" }
+            ],
+            "message1": "do %1",
+            "args1": [
+              { "type": "input_statement", "name": "DO" }
+            ],
+            "inputsInline": true,
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "For loop"
+          });
+        }
+      };
+
+      // 157. control_while_loop
+      Blockly.Blocks['control_while_loop'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "while %1",
+            "args0": [
+              { "type": "input_value", "name": "CONDITION", "check": "Boolean" }
+            ],
+            "message1": "do %1",
+            "args1": [
+              { "type": "input_statement", "name": "DO" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "While loop"
+          });
+        }
+      };
+
+      // 158. control_break
+      Blockly.Blocks['control_break'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "break",
+            "previousStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Break out of loop"
+          });
+        }
+      };
+
+      // 159. control_continue
+      Blockly.Blocks['control_continue'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "continue",
+            "previousStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Continue to next iteration"
+          });
+        }
+      };
+
+      // 160. control_for_each
+      Blockly.Blocks['control_for_each'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "for each %1 in list %2",
+            "args0": [
+              { "type": "field_input", "name": "VAR", "text": "item" },
+              { "type": "field_input", "name": "LIST", "text": "list" }
+            ],
+            "message1": "do %1",
+            "args1": [
+              { "type": "input_statement", "name": "DO" }
+            ],
+            "inputsInline": true,
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "For each loop"
+          });
+        }
+      };
+
+      // 161. control_switch
+      Blockly.Blocks['control_switch'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "switch %1",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "message1": "%1",
+            "args1": [
+              { "type": "input_statement", "name": "CASES" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Switch statement"
+          });
+        }
+      };
+
+      // 162. control_case
+      Blockly.Blocks['control_case'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "case %1",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "message1": "do %1",
+            "args1": [
+              { "type": "input_statement", "name": "DO" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Case in switch"
+          });
+        }
+      };
+
+      // 163. control_default
+      Blockly.Blocks['control_default'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "default",
+            "message1": "do %1",
+            "args1": [
+              { "type": "input_statement", "name": "DO" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Default case"
+          });
+        }
+      };
+
+      // 164. control_try_catch
+      Blockly.Blocks['control_try_catch'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "try",
+            "message1": "%1",
+            "args1": [
+              { "type": "input_statement", "name": "TRY" }
+            ],
+            "message2": "except",
+            "message3": "%1",
+            "args3": [
+              { "type": "input_statement", "name": "CATCH" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Try-catch block"
+          });
+        }
+      };
+
+      // 165. control_ternary
+      Blockly.Blocks['control_ternary'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "if %1 then %2 else %3",
+            "args0": [
+              { "type": "input_value", "name": "CONDITION", "check": "Boolean" },
+              { "type": "input_value", "name": "TRUE" },
+              { "type": "input_value", "name": "FALSE" }
+            ],
+            "inputsInline": true,
+            "output": null,
+            "style": "control_blocks",
+            "tooltip": "Ternary operator"
+          });
+        }
+      };
+
+      // Conversion & Type Blocks (166-170)
+
+      // 166. operator_to_string
+      Blockly.Blocks['operator_to_string'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "to string %1",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Convert to string"
+          });
+        }
+      };
+
+      // 167. operator_to_number
+      Blockly.Blocks['operator_to_number'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "to number %1",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Convert to number"
+          });
+        }
+      };
+
+      // 168. operator_to_boolean
+      Blockly.Blocks['operator_to_boolean'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "to boolean %1",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "output": "Boolean",
+            "style": "control_blocks",
+            "tooltip": "Convert to boolean"
+          });
+        }
+      };
+
+      // 169. operator_is_number
+      Blockly.Blocks['operator_is_number'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 is number ?",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "output": "Boolean",
+            "style": "control_blocks",
+            "tooltip": "Check if value is number"
+          });
+        }
+      };
+
+      // 170. operator_is_text
+      Blockly.Blocks['operator_is_text'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "%1 is text ?",
+            "args0": [
+              { "type": "input_value", "name": "VALUE" }
+            ],
+            "output": "Boolean",
+            "style": "control_blocks",
+            "tooltip": "Check if value is text"
+          });
+        }
+      };
+
+      // Time & Date (171-175)
+
+      // 171. time_current
+      Blockly.Blocks['time_current'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "current %1",
+            "args0": [
+              { "type": "field_dropdown", "name": "UNIT", "options": [
+                ["timestamp", "TIME"],
+                ["milliseconds", "MILLIS"],
+                ["seconds", "SECS"],
+                ["minutes", "MINS"],
+                ["hours", "HOURS"]
+              ]}
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Get current time"
+          });
+        }
+      };
+
+      // 172. time_delay_ms
+      Blockly.Blocks['time_delay_ms'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "delay %1 milliseconds",
+            "args0": [
+              { "type": "input_value", "name": "MS", "check": "Number" }
+            ],
+            "previousStatement": null,
+            "nextStatement": null,
+            "style": "control_blocks",
+            "tooltip": "Delay in milliseconds"
+          });
+        }
+      };
+
+      // 173. time_ticks
+      Blockly.Blocks['time_ticks'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "ticks %1",
+            "args0": [
+              { "type": "field_dropdown", "name": "TYPE", "options": [
+                ["ms", "MS"],
+                ["us", "US"],
+                ["cpu", "CPU"]
+              ]}
+            ],
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Get system ticks"
+          });
+        }
+      };
+
+      // 174. time_elapsed
+      Blockly.Blocks['time_elapsed'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "elapsed time from %1 to %2",
+            "args0": [
+              { "type": "input_value", "name": "START", "check": "Number" },
+              { "type": "input_value", "name": "END", "check": "Number" }
+            ],
+            "inputsInline": true,
+            "output": "Number",
+            "style": "control_blocks",
+            "tooltip": "Calculate elapsed time"
+          });
+        }
+      };
+
+      // 175. time_format
+      Blockly.Blocks['time_format'] = {
+        init: function() {
+          this.jsonInit({
+            "message0": "format time %1 as %2",
+            "args0": [
+              { "type": "input_value", "name": "TIME", "check": "Number" },
+              { "type": "field_input", "name": "FORMAT", "text": "HH:MM:SS" }
+            ],
+            "inputsInline": true,
+            "output": "String",
+            "style": "control_blocks",
+            "tooltip": "Format time"
           });
         }
       };
@@ -3392,10 +4645,10 @@ const App = () => {
               <block type="movement_stop"></block>
               <block type="movement_set_speed"></block>
             </category>
-            <category name="events" colour="#FFBF00">
+            <category name="Events" colour="#FFBF00">
               <block type="event_whenflagclicked"></block>
             </category>
-            <category name="control" colour="#FFAB19">
+            <category name="Control" colour="#FFAB19">
               <block type="control_wait"></block>
               <block type="control_forever"></block>
               <block type="control_repeat"></block>
@@ -3404,30 +4657,59 @@ const App = () => {
               <block type="control_if_else"></block>
               <block type="control_wait_until"></block>
               <block type="control_stop_all"></block>
-              <block type="operator_add"></block>
-              <block type="operator_subtract"></block>
-              <block type="operator_multiply"></block>
-              <block type="operator_divide"></block>
+            </category>
+            <category name="operators" colour="#59C059">
+              <block type="operator_arithmetic"></block>
               <block type="operator_random"></block>
-              <block type="operator_mod"></block>
               <block type="operator_round"></block>
               <block type="operator_mathop"></block>
-              <block type="operator_equals"></block>
-              <block type="operator_not_equals"></block>
-              <block type="operator_less_than"></block>
-              <block type="operator_greater_than"></block>
-              <block type="operator_less_or_equal"></block>
-              <block type="operator_greater_or_equal"></block>
-              <block type="operator_and"></block>
-              <block type="operator_or"></block>
+              <block type="math_number"></block>
+              <block type="math_constant"></block>
+              <block type="math_power"></block>
+              <block type="math_minmax"></block>
+              <block type="math_constrain"></block>
+              <block type="math_random_float"></block>
+              <block type="math_number_property"></block>
+              <block type="math_atan2"></block>
+              <label text="Advanced Math"></label>
+              <block type="operator_power"></block>
+              <block type="operator_min"></block>
+              <block type="operator_max"></block>
+              <block type="operator_clamp"></block>
+              <block type="operator_map"></block>
+              <block type="operator_constrain_angle"></block>
+              <block type="operator_radians"></block>
+              <block type="operator_degrees"></block>
+              <block type="operator_percentage"></block>
+              <block type="operator_average"></block>
+            </category>
+            <category name="logic" colour="#5CB1D6">
+              <block type="operator_comparison"></block>
+              <block type="operator_logic"></block>
               <block type="operator_not"></block>
+            </category>
+            <category name="text" colour="#CF63CF">
               <block type="operator_join"></block>
               <block type="operator_letter_of"></block>
               <block type="operator_length"></block>
               <block type="operator_contains"></block>
+              <label text="Advanced Text"></label>
+              <block type="operator_uppercase"></block>
+              <block type="operator_lowercase"></block>
+              <block type="operator_trim"></block>
+              <block type="operator_replace"></block>
+              <block type="operator_split"></block>
+              <block type="operator_reverse_text"></block>
+              <block type="operator_starts_with"></block>
+              <block type="operator_ends_with"></block>
+              <block type="operator_substring"></block>
+              <block type="operator_repeat_text"></block>
+            </category>
+            <category name="variables" colour="#FF4D19">
               <block type="data_set_variable"></block>
               <block type="data_change_variable"></block>
               <block type="data_get_variable"></block>
+              <label text="Lists"></label>
               <block type="data_create_list"></block>
               <block type="data_add_to_list"></block>
               <block type="data_delete_from_list"></block>
@@ -3436,6 +4718,43 @@ const App = () => {
               <block type="data_item_of_list"></block>
               <block type="data_length_of_list"></block>
               <block type="data_contains_in_list"></block>
+              <label text="Advanced Lists"></label>
+              <block type="data_sort_list"></block>
+              <block type="data_reverse_list"></block>
+              <block type="data_shuffle_list"></block>
+              <block type="data_slice_list"></block>
+              <block type="data_index_of"></block>
+              <block type="data_clear_list"></block>
+              <block type="data_count_in_list"></block>
+              <block type="data_min_of_list"></block>
+              <block type="data_max_of_list"></block>
+              <block type="data_sum_of_list"></block>
+            </category>
+            <category name="advanced control" colour="#FFAB19">
+              <block type="control_for_loop"></block>
+              <block type="control_while_loop"></block>
+              <block type="control_break"></block>
+              <block type="control_continue"></block>
+              <block type="control_for_each"></block>
+              <block type="control_switch"></block>
+              <block type="control_case"></block>
+              <block type="control_default"></block>
+              <block type="control_try_catch"></block>
+              <block type="control_ternary"></block>
+            </category>
+            <category name="conversion" colour="#9966FF">
+              <block type="operator_to_string"></block>
+              <block type="operator_to_number"></block>
+              <block type="operator_to_boolean"></block>
+              <block type="operator_is_number"></block>
+              <block type="operator_is_text"></block>
+            </category>
+            <category name="time" colour="#4C97FF">
+              <block type="time_current"></block>
+              <block type="time_delay_ms"></block>
+              <block type="time_ticks"></block>
+              <block type="time_elapsed"></block>
+              <block type="time_format"></block>
             </category>
           </xml>`;
 
@@ -3649,6 +4968,91 @@ const App = () => {
         .blocklyMainBackground { stroke: none !important; }
         .blocklyScrollbarVertical { display: none !important; }
         .blocklyScrollbarHorizontal { display: none !important; }
+        
+        /* Enhanced text readability on blocks */
+        .blocklyText {
+          fill: white !important;
+          stroke: rgba(0, 0, 0, 0.3) !important;
+          stroke-width: 3px !important;
+          paint-order: stroke fill !important;
+          font-weight: 600 !important;
+        }
+        
+        .blocklyEditableText > .blocklyText {
+          fill: white !important;
+          stroke: rgba(0, 0, 0, 0.3) !important;
+          stroke-width: 3px !important;
+        }
+        
+        /* Field text */
+        .blocklyDropdownText {
+          fill: white !important;
+          stroke: rgba(0, 0, 0, 0.3) !important;
+          stroke-width: 2.5px !important;
+          paint-order: stroke fill !important;
+          font-weight: 600 !important;
+        }
+        
+        /* Fix white text on white background in input fields */
+        .blocklyHtmlInput {
+          color: #1a1a1a !important;
+          font-weight: 600 !important;
+          text-shadow: none !important;
+        }
+        
+        /* Field input text (variable names, list names, etc) */
+        .blocklyFieldInput {
+          fill: #1a1a1a !important;
+          font-weight: 600 !important;
+        }
+        
+        /* Number input fields */
+        .blocklyFieldNumber {
+          fill: #1a1a1a !important;
+          font-weight: 600 !important;
+        }
+        
+        /* 3D Block Effect - Subtle but clear with beveled edges */
+        .blocklyPath {
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) 
+                  drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15)) !important;
+          stroke: rgba(0, 0, 0, 0.15) !important;
+          stroke-width: 1.5px !important;
+        }
+        
+        .blocklyDraggable:not(.blocklyDisabled) .blocklyPath {
+          filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25)) 
+                  drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2)) !important;
+        }
+        
+        /* Selected block - slightly more prominent */
+        .blocklySelected > .blocklyPath {
+          filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3)) 
+                  drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2)) !important;
+          stroke: rgba(0, 0, 0, 0.2) !important;
+        }
+        
+        /* Dragging block - floating effect */
+        .blocklyDragging > .blocklyPath {
+          filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35)) 
+                  drop-shadow(0 3px 6px rgba(0, 0, 0, 0.25)) !important;
+        }
+        
+        /* Beveled 3D edges with highlight and shadow */
+        .blocklyPathDark {
+          stroke: rgba(0, 0, 0, 0.25) !important;
+          stroke-width: 2px !important;
+        }
+        
+        .blocklyPathLight {
+          stroke: rgba(255, 255, 255, 0.4) !important;
+          stroke-width: 2px !important;
+        }
+        
+        /* Add subtle inner glow for depth */
+        .blocklyBlockBackground {
+          filter: brightness(1.05) !important;
+        }
       `}</style>
 
       {/* Header - Clean & Modern */}
