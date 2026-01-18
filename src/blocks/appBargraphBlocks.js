@@ -1,0 +1,7 @@
+Blockly.Blocks['bargraph_clear_all'] = {init: function() {this.jsonInit({"message0": "bargraph clear all", "previousStatement": null, "nextStatement": null, "colour": 20, "tooltip": "Clear all bargraph"});}};
+Blockly.Blocks['bargraph_get_value'] = {init: function() {this.jsonInit({"message0": "bargraph get value color %1", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}], "output": "Number", "colour": 20, "tooltip": "Get bargraph value"});}};
+Blockly.Blocks['bargraph_hide'] = {init: function() {this.jsonInit({"message0": "bargraph hide", "previousStatement": null, "nextStatement": null, "colour": 20, "tooltip": "Hide bargraph"});}};
+Blockly.Blocks['bargraph_set_value'] = {init: function() {this.jsonInit({"message0": "bargraph set value color %1 value %2", "args0": [{"type": "input_value", "name": "COLOR", "check": "Number"}, {"type": "input_value", "name": "VALUE", "check": "Number"}], "previousStatement": null, "nextStatement": null, "colour": 20, "tooltip": "Set bargraph value"});}};
+Blockly.Blocks['bargraph_show'] = {init: function() {this.jsonInit({"message0": "bargraph show fullscreen %1", "args0": [{"type": "input_value", "name": "FULLSCREEN", "check": "Boolean"}], "previousStatement": null, "nextStatement": null, "colour": 20, "tooltip": "Show bargraph fullscreen"});}};
+// Blockly blocks for App Bargraph (not implemented)
+// bargraph.clear_all(), bargraph.get_value(), bargraph.hide(), bargraph.set_value(), bargraph.show()
